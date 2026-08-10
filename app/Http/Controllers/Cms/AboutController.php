@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class AboutController extends Controller
@@ -20,37 +21,38 @@ class AboutController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'title_id' => ['required', 'string', 'max:255'],
-            'title_en' => ['required', 'string', 'max:255'],
-            'description_id' => ['nullable', 'string'],
-            'description_en' => ['nullable', 'string'],
-            'vision_id' => ['nullable', 'string'],
-            'vision_en' => ['nullable', 'string'],
-            'mission_id' => ['nullable', 'string'],
-            'mission_en' => ['nullable', 'string'],
+            'image_id' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'image_en' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'content_id' => ['nullable', 'string'],
+            'content_en' => ['nullable', 'string'],
         ]);
 
-        $legacyValues = [
-            'title' => $validated['title_id'],
-            'description' => $validated['description_id'] ?? null,
-            'vision' => $validated['vision_id'] ?? null,
-            'mission' => $validated['mission_id'] ?? null,
+        $about = DB::table('about_pages')->first();
+        $values = [
+            'content_id' => $validated['content_id'] ?? null,
+            'content_en' => $validated['content_en'] ?? null,
+            'updated_at' => now(),
         ];
 
-        $about = DB::table('about_pages')->first();
+        foreach (['image_id', 'image_en'] as $field) {
+            if ($request->hasFile($field)) {
+                if ($about?->{$field}) {
+                    Storage::disk('public')->delete($about->{$field});
+                }
+
+                $values[$field] = $request->file($field)->store('about', 'public');
+            }
+        }
 
         if ($about) {
-            DB::table('about_pages')->where('id', $about->id)->update([
-                ...$validated,
-                ...$legacyValues,
-                'updated_at' => now(),
-            ]);
+            DB::table('about_pages')->where('id', $about->id)->update($values);
         } else {
             DB::table('about_pages')->insert([
-                ...$validated,
-                ...$legacyValues,
+                ...$values,
+                'title' => 'Tentang EMBER',
+                'title_id' => 'Tentang EMBER',
+                'title_en' => 'About EMBER',
                 'created_at' => now(),
-                'updated_at' => now(),
             ]);
         }
 

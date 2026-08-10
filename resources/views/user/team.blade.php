@@ -4,33 +4,25 @@
 
 @section('content')
     <section class="bg-slate-950 px-4 py-16 text-white sm:px-6 lg:px-8">
-        <div class="mx-auto flex max-w-7xl items-end justify-between gap-6">
-            <div>
-                <p class="text-sm font-bold uppercase tracking-[0.2em] text-red-400">EMBER</p>
-                <h1 class="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">{{ $language === 'en' ? 'Our Team' : 'Tim Kami' }}</h1>
-                <p class="mt-4 text-slate-300">{{ $language === 'en' ? 'The people behind EMBER monitoring and information.' : 'Orang-orang di balik pemantauan dan informasi EMBER.' }}</p>
-            </div>
+        <div class="mx-auto max-w-7xl">
+            <p class="text-sm font-bold uppercase tracking-[0.2em] text-red-400">EMBER</p>
+            <h1 class="mt-4 text-4xl font-bold tracking-tight sm:text-5xl">{{ $language === 'en' ? 'Our Team' : 'Tim Kami' }}</h1>
         </div>
     </section>
 
     <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div class="grid gap-px bg-slate-200 sm:grid-cols-2 lg:grid-cols-3">
             @forelse ($members as $member)
-                @php
-                    $name = $member->{'name_'.$language} ?: $member->name;
-                    $position = $member->{'position_'.$language} ?: $member->position;
-                    $bio = $member->{'bio_'.$language} ?: $member->bio;
-                @endphp
+                @php($name = $member->nama ?: $member->name)
                 <article class="bg-white">
-                    @if ($member->photo_url)
-                        <img src="{{ $member->photo_url }}" alt="{{ $name }}" class="aspect-[4/3] w-full bg-slate-100 object-cover">
+                    @if ($member->photo)
+                        <img src="{{ asset('storage/'.$member->photo) }}" alt="{{ $name }}" class="aspect-[4/3] w-full bg-slate-100 object-cover">
                     @else
                         <div class="flex aspect-[4/3] items-center justify-center bg-slate-100 text-5xl font-bold text-slate-300">{{ strtoupper(substr($name, 0, 1)) }}</div>
                     @endif
                     <div class="p-6">
                         <h2 class="text-lg font-bold text-slate-950">{{ $name }}</h2>
-                        <p class="mt-1 text-sm font-semibold text-red-600">{{ $position }}</p>
-                        @if ($bio)<p class="mt-4 whitespace-pre-line text-sm leading-6 text-slate-600">{{ $bio }}</p>@endif
+                        <p class="mt-2 text-sm font-semibold text-red-600">NPM: {{ $member->npm ?: '-' }}</p>
                     </div>
                 </article>
             @empty

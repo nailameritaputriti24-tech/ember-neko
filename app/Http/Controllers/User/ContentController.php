@@ -66,7 +66,9 @@ class ContentController extends Controller
             $members = DB::table('team_members')
                 ->where('is_active', true)
                 ->where(function ($builder) use ($query) {
-                    $builder->where('name_id', 'like', "%{$query}%")
+                    $builder->where('nama', 'like', "%{$query}%")
+                        ->orWhere('npm', 'like', "%{$query}%")
+                        ->orWhere('name_id', 'like', "%{$query}%")
                         ->orWhere('name_en', 'like', "%{$query}%")
                         ->orWhere('position_id', 'like', "%{$query}%")
                         ->orWhere('position_en', 'like', "%{$query}%");

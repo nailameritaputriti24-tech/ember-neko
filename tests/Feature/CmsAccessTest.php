@@ -46,39 +46,34 @@ class CmsAccessTest extends TestCase
 
     public function test_authenticated_admin_can_manage_about_and_team(): void
     {
+        Storage::fake('public');
         $admin = User::factory()->create();
 
         $this->actingAs($admin)
             ->put(route('cms.about.update'), [
-                'title_id' => 'Tentang EMBER',
-                'title_en' => 'About EMBER',
-                'description_id' => 'Sistem pemantauan dini.',
-                'description_en' => 'An early monitoring system.',
-                'vision_id' => 'Lingkungan aman.',
-                'vision_en' => 'A safe environment.',
-                'mission_id' => 'Menyajikan data lokasi.',
-                'mission_en' => 'Present location data.',
+                'image_id' => UploadedFile::fake()->image('about-id.jpg', 1200, 800),
+                'image_en' => UploadedFile::fake()->image('about-en.jpg', 1200, 800),
+                'content_id' => 'Sistem pemantauan dini.',
+                'content_en' => 'An early monitoring system.',
             ])
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('about_pages', [
-            'title_id' => 'Tentang EMBER',
-            'title_en' => 'About EMBER',
+            'content_id' => 'Sistem pemantauan dini.',
+            'content_en' => 'An early monitoring system.',
         ]);
 
         $this->actingAs($admin)
             ->post(route('cms.team.store'), [
-                'name_id' => 'Tim Monitoring',
-                'name_en' => 'Monitoring Team',
-                'position_id' => 'Analis',
-                'position_en' => 'Analyst',
-                'is_active' => '1',
+                'photo' => UploadedFile::fake()->image('team.jpg', 600, 600),
+                'nama' => 'Tim Monitoring',
+                'npm' => '2312345678',
             ])
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('team_members', [
-            'name_id' => 'Tim Monitoring',
-            'name_en' => 'Monitoring Team',
+            'nama' => 'Tim Monitoring',
+            'npm' => '2312345678',
             'is_active' => true,
         ]);
     }
@@ -89,16 +84,8 @@ class CmsAccessTest extends TestCase
 
         $this->actingAs($admin)
             ->put(route('cms.methodology.update'), [
-                'title_id' => 'Metodologi EMBER',
-                'title_en' => 'EMBER Methodology',
-                'introduction_id' => 'Penjelasan dalam bahasa Indonesia.',
-                'introduction_en' => 'Explanation in English.',
-                'data_source_id' => 'Sumber data Indonesia.',
-                'data_source_en' => 'English data sources.',
-                'process_id' => 'Proses Indonesia.',
-                'process_en' => 'English process.',
-                'classification_id' => 'Klasifikasi Indonesia.',
-                'classification_en' => 'English classification.',
+                'content_id' => 'Penjelasan dalam bahasa Indonesia.',
+                'content_en' => 'Explanation in English.',
             ])
             ->assertSessionHas('success');
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class MethodologyController extends Controller
@@ -20,30 +21,37 @@ class MethodologyController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'title_id' => ['required', 'string', 'max:255'],
-            'title_en' => ['required', 'string', 'max:255'],
-            'introduction_id' => ['nullable', 'string'],
-            'introduction_en' => ['nullable', 'string'],
-            'data_source_id' => ['nullable', 'string'],
-            'data_source_en' => ['nullable', 'string'],
-            'process_id' => ['nullable', 'string'],
-            'process_en' => ['nullable', 'string'],
-            'classification_id' => ['nullable', 'string'],
-            'classification_en' => ['nullable', 'string'],
+            'image_id' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'image_en' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'content_id' => ['nullable', 'string'],
+            'content_en' => ['nullable', 'string'],
         ]);
 
         $methodology = DB::table('methodology_pages')->first();
+        $values = [
+            'content_id' => $validated['content_id'] ?? null,
+            'content_en' => $validated['content_en'] ?? null,
+            'updated_at' => now(),
+        ];
+
+        foreach (['image_id', 'image_en'] as $field) {
+            if ($request->hasFile($field)) {
+                if ($methodology?->{$field}) {
+                    Storage::disk('public')->delete($methodology->{$field});
+                }
+
+                $values[$field] = $request->file($field)->store('methodology', 'public');
+            }
+        }
 
         if ($methodology) {
-            DB::table('methodology_pages')->where('id', $methodology->id)->update([
-                ...$validated,
-                'updated_at' => now(),
-            ]);
+            DB::table('methodology_pages')->where('id', $methodology->id)->update($values);
         } else {
             DB::table('methodology_pages')->insert([
-                ...$validated,
+                ...$values,
+                'title_id' => 'Metodologi EMBER',
+                'title_en' => 'EMBER Methodology',
                 'created_at' => now(),
-                'updated_at' => now(),
             ]);
         }
 

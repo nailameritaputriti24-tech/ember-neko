@@ -4,35 +4,26 @@
 
 @section('content')
     @php
-        $title = $about?->{'title_'.$language};
-        $description = $about?->{'description_'.$language};
-        $vision = $about?->{'vision_'.$language};
-        $mission = $about?->{'mission_'.$language};
+        $content = $about?->{'content_'.$language};
+        $image = $about?->{'image_'.$language};
     @endphp
 
     <section class="bg-slate-950 px-4 py-16 text-white sm:px-6 lg:px-8">
         <div class="mx-auto max-w-7xl">
-            <div class="flex items-end justify-between gap-6">
-                <div>
-                    <p class="text-sm font-bold uppercase tracking-[0.2em] text-red-400">EMBER</p>
-                    <h1 class="mt-4 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">{{ $title ?: ($language === 'en' ? 'About EMBER' : 'Tentang EMBER') }}</h1>
-                </div>
-            </div>
+            <p class="text-sm font-bold uppercase tracking-[0.2em] text-red-400">EMBER</p>
+            <h1 class="mt-4 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">{{ $language === 'en' ? 'About EMBER' : 'Tentang EMBER' }}</h1>
         </div>
     </section>
 
     <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         @if ($about)
-            <p class="max-w-4xl whitespace-pre-line text-lg leading-8 text-slate-700">{{ $description }}</p>
-            <div class="mt-10 grid gap-px bg-slate-200 md:grid-cols-2">
-                <article class="bg-white p-7">
-                    <p class="text-xs font-bold uppercase tracking-wider text-red-600">{{ $language === 'en' ? 'Vision' : 'Visi' }}</p>
-                    <p class="mt-4 whitespace-pre-line leading-7 text-slate-700">{{ $vision ?: '-' }}</p>
-                </article>
-                <article class="bg-white p-7">
-                    <p class="text-xs font-bold uppercase tracking-wider text-red-600">{{ $language === 'en' ? 'Mission' : 'Misi' }}</p>
-                    <p class="mt-4 whitespace-pre-line leading-7 text-slate-700">{{ $mission ?: '-' }}</p>
-                </article>
+            <div class="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+                @if ($image)
+                    <img src="{{ asset('storage/'.$image) }}" alt="{{ $language === 'en' ? 'About EMBER' : 'Tentang EMBER' }}" class="aspect-[4/3] w-full bg-slate-100 object-cover">
+                @else
+                    <div class="flex aspect-[4/3] items-center justify-center bg-slate-100 text-sm font-semibold text-slate-400">{{ $language === 'en' ? 'Image is not available yet' : 'Gambar belum tersedia' }}</div>
+                @endif
+                <div class="whitespace-pre-line text-lg leading-8 text-slate-700">{{ $content ?: ($language === 'en' ? 'About content is not available yet.' : 'Konten About belum tersedia.') }}</div>
             </div>
         @else
             <p class="border border-slate-200 bg-white p-8 text-slate-500">{{ $language === 'en' ? 'About content is not available yet.' : 'Konten About belum tersedia.' }}</p>
