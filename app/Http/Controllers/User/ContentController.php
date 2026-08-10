@@ -1,0 +1,133 @@
+<?php
+
+namespace App\Http\Controllers\User;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\View\View;
+
+class ContentController extends Controller
+{
+    public function map(Request $request): View
+    {
+        $language = $this->language($request);
+        $locations = DB::table('titik_lokasi')
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->orderBy('id')
+            ->get()
+            ->map(function ($location) use ($language) {
+                $location->detail_url = route('user.locations.show', [
+                    'id' => $location->id,
+                    'lang' => $language,
+                ]);
+
+                return $location;
+            });
+
+        return view('user.map', [
+            'locations' => $locations,
+            'language' => $language,
+        ]);
+    }
+
+    public function location(Request $request, int $id): View
+    {
+        $location = DB::table('titik_lokasi')->where('id', $id)->firstOrFail();
+
+        return view('user.location-detail', [
+            'location' => $location,
+            'language' => $this->language($request),
+            'status' => $this->statusFor($location->confidence, $this->language($request)),
+        ]);
+    }
+
+    public function search(Request $request): View
+    {
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+        ]);
+        $query = trim($validated['q'] ?? '');
+        $locations = collect();
+        $members = collect();
+
+        if ($query !== '') {
+            $locations = DB::table('titik_lokasi')
+                ->where(function ($builder) use ($query) {
+                    $builder->where('desa', 'like', "%{$query}%")
+                        ->orWhere('kecamatan', 'like', "%{$query}%")
+                        ->orWhere('kabupaten_kota', 'like', "%{$query}%")
+                        ->orWhere('provinsi', 'like', "%{$query}%");
+                })
+                ->limit(20)
+                ->get();
+
+            $members = DB::table('team_members')
+                ->where('is_active', true)
+                ->where(function ($builder) use ($query) {
+                    $builder->where('name_id', 'like', "%{$query}%")
+                        ->orWhere('name_en', 'like', "%{$query}%")
+                        ->orWhere('position_id', 'like', "%{$query}%")
+                        ->orWhere('position_en', 'like', "%{$query}%");
+                })
+                ->limit(20)
+                ->get();
+        }
+
+        return view('user.search', [
+            'query' => $query,
+            'locations' => $locations,
+            'members' => $members,
+            'language' => $this->language($request),
+        ]);
+    }
+
+    public function about(Request $request): View
+    {
+        return view('user.about', [
+            'about' => DB::table('about_pages')->first(),
+            'language' => $this->language($request),
+        ]);
+    }
+
+    public function team(Request $request): View
+    {
+        return view('user.team', [
+            'members' => DB::table('team_members')->where('is_active', true)->orderBy('sort_order')->get(),
+            'language' => $this->language($request),
+        ]);
+    }
+
+    public function methodology(Request $request): View
+    {
+        return view('user.methodology', [
+            'methodology' => DB::table('methodology_pages')->first(),
+            'language' => $this->language($request),
+        ]);
+    }
+
+    private function language(Request $request): string
+    {
+        return $request->query('lang') === 'en' ? 'en' : 'id';
+    }
+
+    private function statusFor(mixed $confidence, string $language): string
+    {
+        if ($confidence === null || trim((string) $confidence) === '') {
+            return $language === 'en' ? 'Unrated' : 'Belum dinilai';
+        }
+
+        $value = strtolower(trim((string) $confidence));
+
+        if (in_array($value, ['high', 'tinggi'], true) || (is_numeric($value) && (float) $value >= 80)) {
+            return $language === 'en' ? 'High' : 'Tinggi';
+        }
+
+        if (in_array($value, ['nominal', 'medium', 'sedang'], true) || (is_numeric($value) && (float) $value >= 50)) {
+            return $language === 'en' ? 'Medium' : 'Sedang';
+        }
+
+        return $language === 'en' ? 'Low' : 'Rendah';
+    }
+}
