@@ -22,8 +22,6 @@
 .map-year-slider-control {
     position: relative;
     height: 4.5rem;
-    background: #0b0b0b;
-    box-shadow: 0 18px 35px rgb(15 23 42 / 0.22);
 }
 
 .map-year-slider-track {
@@ -42,7 +40,7 @@
     top: 1.7rem;
     height: 0.625rem;
     border-radius: 999px;
-    background: #292929;
+    background: #e2e8f0;
     content: '';
 }
 
@@ -59,11 +57,12 @@
 .map-year-slider-mark-label {
     position: absolute;
     top: 0.4rem;
-    color: #cbd5e1;
+    color: #334155;
     font-size: 0.55rem;
     font-weight: 700;
     line-height: 1;
     white-space: nowrap;
+    text-shadow: 0 1px 3px #fff, 0 0 6px #fff;
     transition: color 160ms ease, opacity 160ms ease;
 }
 
@@ -73,7 +72,7 @@
     width: 0.25rem;
     height: 0.25rem;
     border-radius: 999px;
-    background: #b9b9b9;
+    background: #64748b;
 }
 
 .map-year-slider-mark[data-active='true'] .map-year-slider-mark-label {
@@ -109,8 +108,8 @@
     appearance: none;
     border: 2px solid #8cc4d8;
     border-radius: 999px;
-    background: #0b0b0b;
-    box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+    background: #fff;
+    box-shadow: 0 4px 14px rgb(15 23 42 / 0.22);
 }
 
 .map-year-slider-input::-moz-range-track {
@@ -123,8 +122,8 @@
     height: 2.25rem;
     border: 2px solid #8cc4d8;
     border-radius: 999px;
-    background: #0b0b0b;
-    box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+    background: #fff;
+    box-shadow: 0 4px 14px rgb(15 23 42 / 0.22);
 }
 
 .map-year-slider-input:focus-visible {
@@ -162,4 +161,38 @@
 
 #ember-map .leaflet-interactive {
     cursor: pointer;
+}
+
+#ember-map .leaflet-tooltip.ember-boundary-tooltip {
+    pointer-events: none;
+    border: 0;
+    border-radius: 0;
+    background: #020617;
+    padding: 0.65rem 0.8rem;
+    color: #fff;
+    box-shadow: 0 10px 24px rgb(15 23 42 / 0.28);
+}
+
+#ember-map .leaflet-tooltip-top.ember-boundary-tooltip::before {
+    border-top-color: #020617;
+}
+
+.ember-boundary-tooltip-type,
+.ember-boundary-tooltip-name {
+    display: block;
+}
+
+.ember-boundary-tooltip-type {
+    color: #f87171;
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.ember-boundary-tooltip-name {
+    margin-top: 0.3rem;
+    font-size: 0.85rem;
+    line-height: 1.15;
 }

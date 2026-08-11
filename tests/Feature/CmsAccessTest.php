@@ -17,6 +17,9 @@ class CmsAccessTest extends TestCase
     {
         $this->get('/cms/titik-lokasi')
             ->assertRedirect(route('cms.login'));
+
+        $this->get('/cms/geojson')
+            ->assertRedirect(route('cms.login'));
     }
 
     public function test_admin_can_login_and_view_location_detail(): void
@@ -192,5 +195,105 @@ class CmsAccessTest extends TestCase
 
         Storage::disk('public')->assertMissing($photo->photo_path);
         $this->assertDatabaseMissing('photo_references', ['id' => $photo->id]);
+    }
+
+    public function test_authenticated_admin_can_upload_and_delete_geojson_layer(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $geojson = json_encode([
+            'type' => 'FeatureCollection',
+            'features' => [
+                [
+                    'type' => 'Feature',
+                    'properties' => ['name' => 'Sumatera'],
+                    'geometry' => [
+                        'type' => 'Polygon',
+                        'coordinates' => [[[95, -6], [106, -6], [106, 6], [95, -6]]],
+                    ],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $this->actingAs($admin)
+            ->post(route('cms.geojson.store'), [
+                'name' => 'Batas Sumatera',
+                'description' => 'Batas wilayah Pulau Sumatera.',
+                'geojson' => UploadedFile::fake()->createWithContent('sumatera.geojson', $geojson),
+                'administrative_level' => 'province',
+                'is_active' => '1',
+            ])
+            ->assertSessionHas('success');
+
+        $layer = DB::table('geojson_layers')->where('name', 'Batas Sumatera')->first();
+
+        $this->assertNotNull($layer);
+        $this->assertSame('FeatureCollection', $layer->geojson_type);
+        $this->assertSame(1, $layer->feature_count);
+        Storage::disk('public')->assertExists($layer->file_path);
+
+        $this->actingAs($admin)
+            ->delete(route('cms.geojson.destroy', $layer->id))
+            ->assertSessionHas('success');
+
+        Storage::disk('public')->assertMissing($layer->file_path);
+        $this->assertDatabaseMissing('geojson_layers', ['id' => $layer->id]);
+    }
+
+    public function test_authenticated_admin_can_upload_pmtiles_and_public_can_request_a_byte_range(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create();
+        $contents = "PMTiles\x03".str_repeat("\0", 248);
+
+        $this->actingAs($admin)
+            ->post(route('cms.geojson.store'), [
+                'name' => 'Batas Kecamatan Sumatera',
+                'description' => 'Layer kecamatan ringkas.',
+                'geojson' => UploadedFile::fake()->createWithContent('kecamatan_sumatera_ringkas.pmtiles', $contents),
+                'administrative_level' => 'district',
+                'is_active' => '1',
+            ])
+            ->assertSessionHas('success');
+
+        $layer = DB::table('geojson_layers')->where('name', 'Batas Kecamatan Sumatera')->first();
+
+        $this->assertNotNull($layer);
+        $this->assertSame('pmtiles', $layer->file_format);
+        $this->assertSame('PMTiles v3', $layer->geojson_type);
+
+        $this->actingAs($admin)
+            ->patch(route('cms.geojson.update', $layer->id), [
+                'is_active' => '1',
+                'administrative_level' => 'district',
+                'min_zoom' => 6,
+                'max_zoom' => 10,
+            ])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('geojson_layers', [
+            'id' => $layer->id,
+            'is_active' => true,
+            'min_zoom' => 6,
+            'max_zoom' => 10,
+        ]);
+
+        $response = $this->withHeader('Range', 'bytes=0-7')
+            ->get(route('map-layers.show', $layer->id));
+
+        $response
+            ->assertStatus(206)
+            ->assertHeader('Accept-Ranges', 'bytes')
+            ->assertHeader('Content-Range', 'bytes 0-7/256')
+            ->assertHeader('Content-Type', 'application/vnd.pmtiles');
+
+        $this->assertSame("PMTiles\x03", $response->streamedContent());
+
+        $this->get(route('user.map'))
+            ->assertOk()
+            ->assertSee('Batas Kecamatan Sumatera')
+            ->assertSee('map-layers\\/'.$layer->id, false)
+            ->assertSee('"minZoom":6', false)
+            ->assertSee('"maxZoom":10', false);
     }
 }

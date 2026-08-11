@@ -1,9 +1,28 @@
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { PMTiles } from 'pmtiles';
+import {
+    GeomType,
+    LineSymbolizer,
+    PolygonSymbolizer,
+    leafletLayer,
+} from 'protomaps-leaflet';
 
 const EmberMap = {
     map: null,
     markerLayer: null,
+    boundaryLayers: [],
+    boundaryHoverTooltip: null,
+    boundaryHoverFrame: null,
+    pendingBoundaryHoverEvent: null,
+    boundaryPointFocus: false,
+    focusedLocationLabel: null,
+    boundarySelection: {
+        province: null,
+        regency: null,
+        district: null,
+        village: null,
+    },
     locations: [],
     language: 'id',
 
@@ -33,9 +52,350 @@ const EmberMap = {
             },
         ).addTo(this.map);
 
+        this.map.createPane('boundaries');
+        this.map.getPane('boundaries').style.zIndex = '350';
+        this.renderBoundaryLayers(payload.boundaryLayers || []);
+
         this.markerLayer = L.layerGroup().addTo(this.map);
         this.renderMarkers(locations, { fitView: true });
         this.initializeYearFilter();
+        this.initializeBoundaryDrilldown();
+        this.initializeBoundaryHover();
+        this.map.on('click', (event) => {
+            this.handleBoundaryClick(event);
+            this.closeLocationDetail();
+        });
+    },
+
+    async renderBoundaryLayers(layers) {
+        for (const layerDefinition of layers) {
+            try {
+                const archive = new PMTiles(layerDefinition.url);
+                const metadata = await archive.getMetadata();
+                const sourceLayers = Array.isArray(metadata?.vector_layers)
+                    ? metadata.vector_layers.map((layer) => layer.id).filter(Boolean)
+                    : [];
+
+                if (sourceLayers.length === 0) {
+                    console.warn(`Layer ${layerDefinition.name} tidak memiliki vector_layers.`);
+                    continue;
+                }
+
+                const paintRules = sourceLayers.flatMap((dataLayer) => [
+                    {
+                        dataLayer,
+                        filter: (_zoom, feature) => feature.geomType === GeomType.Polygon
+                            && this.featureMatchesBoundarySelection(feature.props, layerDefinition.level),
+                        symbolizer: new PolygonSymbolizer({
+                            fill: '#dc2626',
+                            opacity: layerDefinition.level === 'province' ? 0.08 : 0.045,
+                        }),
+                    },
+                    {
+                        dataLayer,
+                        filter: (_zoom, feature) => feature.geomType !== GeomType.Point
+                            && this.featureMatchesBoundarySelection(feature.props, layerDefinition.level),
+                        symbolizer: new LineSymbolizer({
+                            color: '#b91c1c',
+                            width: layerDefinition.level === 'province' ? 1.8 : 1,
+                            opacity: 0.7,
+                            lineJoin: 'round',
+                        }),
+                    },
+                ]);
+
+                const boundaryLayer = leafletLayer({
+                    url: archive,
+                    paintRules,
+                    labelRules: [],
+                    pane: 'boundaries',
+                    minZoom: Number(layerDefinition.minZoom ?? 0),
+                    maxZoom: Number(layerDefinition.maxZoom ?? 20),
+                    noWrap: true,
+                    attribution: 'Batas wilayah',
+                });
+
+                boundaryLayer.addTo(this.map);
+                this.boundaryLayers.push({
+                    definition: layerDefinition,
+                    layer: boundaryLayer,
+                });
+            } catch (error) {
+                console.error(`Layer ${layerDefinition.name} gagal dimuat.`, error);
+            }
+        }
+    },
+
+    initializeBoundaryDrilldown() {
+        document.getElementById('map-boundary-reset')?.addEventListener('click', () => {
+            this.resetBoundaryDrilldown();
+        });
+
+        this.map.on('zoomend', () => {
+            const zoom = this.map.getZoom();
+
+            if (zoom <= 6) {
+                this.boundarySelection = { province: null, regency: null, district: null, village: null };
+                this.boundaryPointFocus = false;
+                this.focusedLocationLabel = null;
+            } else if (zoom <= 8) {
+                this.boundarySelection.regency = null;
+                this.boundarySelection.district = null;
+                this.boundarySelection.village = null;
+            } else if (zoom <= 10) {
+                this.boundarySelection.district = null;
+                this.boundarySelection.village = null;
+            }
+
+            this.rerenderBoundaryLayers();
+            this.updateBoundaryDrilldownUi();
+        });
+
+        this.updateBoundaryDrilldownUi();
+    },
+
+    initializeBoundaryHover() {
+        this.boundaryHoverTooltip = L.tooltip({
+            className: 'ember-boundary-tooltip',
+            direction: 'top',
+            offset: [0, -10],
+            opacity: 1,
+        });
+
+        this.map.on('mousemove', (event) => {
+            this.pendingBoundaryHoverEvent = event;
+
+            if (this.boundaryHoverFrame !== null) {
+                return;
+            }
+
+            this.boundaryHoverFrame = window.requestAnimationFrame(() => {
+                this.handleBoundaryHover(this.pendingBoundaryHoverEvent);
+                this.boundaryHoverFrame = null;
+            });
+        });
+
+        this.map.getContainer().addEventListener('mouseleave', () => this.hideBoundaryHover());
+        this.map.on('zoomstart', () => this.hideBoundaryHover());
+    },
+
+    handleBoundaryHover(event) {
+        const activeBoundary = this.activeBoundaryForZoom();
+
+        if (!activeBoundary || !event) {
+            this.hideBoundaryHover();
+            return;
+        }
+
+        try {
+            const pickedBySource = activeBoundary.layer.queryTileFeaturesDebug(
+                event.latlng.lng,
+                event.latlng.lat,
+                3,
+            );
+            const pickedFeatures = Array.from(pickedBySource.values()).flat();
+            const picked = pickedFeatures.find(({ feature }) =>
+                feature.geomType === GeomType.Polygon
+                && this.featureMatchesBoundarySelection(feature.props, activeBoundary.definition.level)
+            );
+
+            if (!picked) {
+                this.hideBoundaryHover();
+                return;
+            }
+
+            const propertyByLevel = {
+                province: 'LEVEL_3',
+                regency: 'LEVEL_4',
+                district: 'LEVEL_5',
+                village: 'LEVEL_6',
+            };
+            const labelByLevel = this.language === 'en'
+                ? { province: 'Province', regency: 'Regency/City', district: 'District', village: 'Village' }
+                : { province: 'Provinsi', regency: 'Kabupaten/Kota', district: 'Kecamatan', village: 'Desa' };
+            const level = activeBoundary.definition.level;
+            const name = picked.feature.props[propertyByLevel[level]];
+
+            if (!name) {
+                this.hideBoundaryHover();
+                return;
+            }
+
+            const content = document.createElement('div');
+            const typeElement = document.createElement('span');
+            const nameElement = document.createElement('strong');
+            typeElement.className = 'ember-boundary-tooltip-type';
+            nameElement.className = 'ember-boundary-tooltip-name';
+            typeElement.textContent = labelByLevel[level] || '';
+            nameElement.textContent = String(name);
+            content.append(typeElement, nameElement);
+
+            this.boundaryHoverTooltip
+                .setLatLng(event.latlng)
+                .setContent(content);
+
+            if (!this.map.hasLayer(this.boundaryHoverTooltip)) {
+                this.boundaryHoverTooltip.addTo(this.map);
+            }
+
+            this.map.getContainer().style.cursor = 'pointer';
+        } catch {
+            this.hideBoundaryHover();
+        }
+    },
+
+    hideBoundaryHover() {
+        if (this.boundaryHoverTooltip && this.map.hasLayer(this.boundaryHoverTooltip)) {
+            this.map.removeLayer(this.boundaryHoverTooltip);
+        }
+
+        this.map.getContainer().style.cursor = '';
+    },
+
+    activeBoundaryForZoom() {
+        const zoom = this.map.getZoom();
+
+        return this.boundaryLayers.find(({ definition }) =>
+            zoom >= Number(definition.minZoom) && zoom <= Number(definition.maxZoom)
+        );
+    },
+
+    handleBoundaryClick(event) {
+        const activeBoundary = this.activeBoundaryForZoom();
+
+        if (!activeBoundary) {
+            return;
+        }
+
+        const pickedBySource = activeBoundary.layer.queryTileFeaturesDebug(
+            event.latlng.lng,
+            event.latlng.lat,
+            4,
+        );
+        const pickedFeatures = Array.from(pickedBySource.values()).flat();
+        const picked = pickedFeatures.find(({ feature }) =>
+            feature.geomType === GeomType.Polygon
+            && this.featureMatchesBoundarySelection(feature.props, activeBoundary.definition.level)
+        );
+
+        if (!picked) {
+            return;
+        }
+
+        const props = picked.feature.props;
+        const level = activeBoundary.definition.level;
+
+        if (level === 'province' && props.LEVEL_3) {
+            this.boundarySelection = {
+                province: String(props.LEVEL_3),
+                regency: null,
+                district: null,
+                village: null,
+            };
+        } else if (level === 'regency' && props.LEVEL_4) {
+            this.boundarySelection.regency = String(props.LEVEL_4);
+            this.boundarySelection.district = null;
+            this.boundarySelection.village = null;
+        } else if (level === 'district' && props.LEVEL_5) {
+            this.boundarySelection.district = String(props.LEVEL_5);
+            this.boundarySelection.village = null;
+        } else if (level === 'village' && props.LEVEL_6) {
+            this.boundarySelection.village = String(props.LEVEL_6);
+        } else {
+            return;
+        }
+
+        this.rerenderBoundaryLayers();
+        this.updateBoundaryDrilldownUi();
+
+        const levelOrder = ['province', 'regency', 'district', 'village'];
+        const nextLevel = levelOrder[levelOrder.indexOf(level) + 1];
+        const nextBoundary = this.boundaryLayers.find(({ definition }) => definition.level === nextLevel);
+
+        if (nextBoundary) {
+            this.map.setView(event.latlng, Number(nextBoundary.definition.minZoom));
+        }
+    },
+
+    featureMatchesBoundarySelection(props, level) {
+        if (level === 'province' || level === 'other' || this.boundaryPointFocus) {
+            return true;
+        }
+
+        if (!this.boundarySelection.province || String(props.LEVEL_3 ?? '') !== this.boundarySelection.province) {
+            return false;
+        }
+
+        if (level === 'regency') {
+            return true;
+        }
+
+        if (!this.boundarySelection.regency || String(props.LEVEL_4 ?? '') !== this.boundarySelection.regency) {
+            return false;
+        }
+
+        if (level === 'district') {
+            return true;
+        }
+
+        return Boolean(this.boundarySelection.district)
+            && String(props.LEVEL_5 ?? '') === this.boundarySelection.district;
+    },
+
+    rerenderBoundaryLayers() {
+        this.boundaryLayers.forEach(({ layer }) => layer.rerenderTiles());
+    },
+
+    resetBoundaryDrilldown() {
+        this.boundarySelection = { province: null, regency: null, district: null, village: null };
+        this.boundaryPointFocus = false;
+        this.focusedLocationLabel = null;
+        this.rerenderBoundaryLayers();
+        this.updateBoundaryDrilldownUi();
+        this.map.fitBounds([[-6.5, 94.5], [6.5, 106.5]], { padding: [36, 36], maxZoom: 6 });
+    },
+
+    updateBoundaryDrilldownUi() {
+        const labels = {
+            province: this.language === 'en' ? 'Province' : 'Provinsi',
+            regency: this.language === 'en' ? 'Regency/City' : 'Kabupaten/Kota',
+            district: this.language === 'en' ? 'District' : 'Kecamatan',
+            village: this.language === 'en' ? 'Village' : 'Desa',
+        };
+        const zoom = this.map.getZoom();
+        const activeLevel = this.boundaryLayers.find(({ definition }) =>
+            zoom >= Number(definition.minZoom) && zoom <= Number(definition.maxZoom)
+        )?.definition.level || 'province';
+        const breadcrumb = (this.boundaryPointFocus
+            ? [this.language === 'en' ? 'Location point' : 'Titik lokasi', this.focusedLocationLabel]
+            : ['Sumatera', this.boundarySelection.province, this.boundarySelection.regency, this.boundarySelection.district, this.boundarySelection.village])
+            .filter(Boolean)
+            .join(' / ');
+        const parentReady = this.boundaryPointFocus || activeLevel === 'province'
+            || (activeLevel === 'regency' && this.boundarySelection.province)
+            || (activeLevel === 'district' && this.boundarySelection.regency)
+            || (activeLevel === 'village' && this.boundarySelection.district);
+        const instruction = this.boundaryPointFocus
+            ? (this.language === 'en'
+                ? 'Showing village boundaries around the selected location.'
+                : 'Menampilkan batas desa di sekitar titik yang dipilih.')
+            : parentReady
+            ? (this.language === 'en'
+                ? `Click a ${labels[activeLevel].toLowerCase()} to continue.`
+                : `Klik ${labels[activeLevel].toLowerCase()} untuk melanjutkan.`)
+            : (this.language === 'en'
+                ? 'Zoom out and select the parent region first.'
+                : 'Perkecil peta dan pilih wilayah induk terlebih dahulu.');
+
+        const levelElement = document.getElementById('map-boundary-level');
+        const breadcrumbElement = document.getElementById('map-boundary-breadcrumb');
+        const instructionElement = document.getElementById('map-boundary-instruction');
+        const resetButton = document.getElementById('map-boundary-reset');
+
+        if (levelElement) levelElement.textContent = labels[activeLevel] || labels.province;
+        if (breadcrumbElement) breadcrumbElement.textContent = breadcrumb;
+        if (instructionElement) instructionElement.textContent = instruction;
+        resetButton?.classList.toggle('hidden', !this.boundarySelection.province && !this.boundaryPointFocus);
     },
 
     renderMarkers(locations, { fitView = false } = {}) {
@@ -63,7 +423,10 @@ const EmberMap = {
                 bubblingMouseEvents: false,
             });
 
-            marker.on('click', () => this.showLocationDetail(location, status));
+            marker.on('click', () => {
+                this.showLocationDetail(location, status);
+                this.focusLocationAtVillageLevel(location);
+            });
             marker.bindTooltip(
                 `${location.desa || (this.language === 'en' ? 'Location point' : 'Titik lokasi')} · ${this.language === 'en' ? 'Click for details' : 'Klik untuk detail'}`,
                 { direction: 'top', offset: [0, -8] },
@@ -81,7 +444,15 @@ const EmberMap = {
 
         emptyElement?.classList.toggle('hidden', locations.length > 0);
 
-        if (fitView && bounds.length > 0) {
+        if (fitView && bounds.length === 1) {
+            this.map.fitBounds([
+                [-6.5, 94.5],
+                [6.5, 106.5],
+            ], {
+                padding: [36, 36],
+                maxZoom: 6,
+            });
+        } else if (fitView && bounds.length > 1) {
             this.map.fitBounds(bounds, {
                 padding: [36, 36],
                 maxZoom: 10,
@@ -89,6 +460,39 @@ const EmberMap = {
         } else if (fitView) {
             this.map.setView([-2.5, 118], 5);
         }
+    },
+
+    focusLocationAtVillageLevel(location) {
+        const latitude = Number(location.latitude);
+        const longitude = Number(location.longitude);
+
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+            return;
+        }
+
+        const hasCompleteHierarchy = Boolean(
+            location.provinsi && location.kabupaten_kota && location.kecamatan
+        );
+
+        this.boundaryPointFocus = !hasCompleteHierarchy;
+        this.focusedLocationLabel = location.desa
+            || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        this.boundarySelection = {
+            province: location.provinsi || null,
+            regency: location.kabupaten_kota || null,
+            district: location.kecamatan || null,
+            village: location.desa || null,
+        };
+
+        this.rerenderBoundaryLayers();
+        this.updateBoundaryDrilldownUi();
+
+        const villageLayer = this.boundaryLayers.find(({ definition }) => definition.level === 'village');
+        const targetZoom = villageLayer
+            ? Math.max(12, Number(villageLayer.definition.minZoom))
+            : 12;
+
+        this.map.setView([latitude, longitude], targetZoom, { animate: true });
     },
 
     initializeYearFilter() {

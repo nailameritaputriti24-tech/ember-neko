@@ -26,8 +26,22 @@ class ContentController extends Controller
                 return $location;
             });
 
+        $boundaryLayers = DB::table('geojson_layers')
+            ->where('is_active', true)
+            ->where('file_format', 'pmtiles')
+            ->orderBy('min_zoom')
+            ->get()
+            ->map(fn (object $layer) => [
+                'name' => $layer->name,
+                'url' => route('map-layers.show', $layer->id),
+                'level' => $layer->administrative_level,
+                'minZoom' => $layer->min_zoom,
+                'maxZoom' => $layer->max_zoom,
+            ]);
+
         return view('user.map', [
             'locations' => $locations,
+            'boundaryLayers' => $boundaryLayers,
             'language' => $language,
         ]);
     }
@@ -109,9 +123,68 @@ class ContentController extends Controller
         ]);
     }
 
+    public function statistics(Request $request): View
+    {
+        $locations = DB::table('titik_lokasi')->select('date', 'confidence')->get();
+        $emptyCounts = ['high' => 0, 'medium' => 0, 'low' => 0, 'unrated' => 0];
+        $summary = $locations->reduce(function (array $counts, object $location) {
+            $counts[$this->statusKey($location->confidence)]++;
+
+            return $counts;
+        }, $emptyCounts);
+
+        $yearlyStatistics = $locations
+            ->filter(fn (object $location) => filled($location->date))
+            ->groupBy(fn (object $location) => (int) substr((string) $location->date, 0, 4))
+            ->map(function ($yearLocations, int $year) use ($emptyCounts) {
+                $counts = $yearLocations->reduce(function (array $yearCounts, object $location) {
+                    $yearCounts[$this->statusKey($location->confidence)]++;
+
+                    return $yearCounts;
+                }, $emptyCounts);
+                $total = array_sum($counts);
+
+                return [
+                    'year' => $year,
+                    'total' => $total,
+                    'counts' => $counts,
+                    'percentages' => collect($counts)->map(
+                        fn (int $count) => $total > 0 ? round(($count / $total) * 100, 2) : 0
+                    )->all(),
+                ];
+            })
+            ->sortByDesc('year')
+            ->values();
+
+        return view('user.statistics', [
+            'language' => $this->language($request),
+            'summary' => ['total' => $locations->count(), ...$summary],
+            'yearlyStatistics' => $yearlyStatistics,
+        ]);
+    }
+
     private function language(Request $request): string
     {
         return $request->query('lang') === 'en' ? 'en' : 'id';
+    }
+
+    private function statusKey(mixed $confidence): string
+    {
+        if ($confidence === null || trim((string) $confidence) === '') {
+            return 'unrated';
+        }
+
+        $value = strtolower(trim((string) $confidence));
+
+        if (in_array($value, ['high', 'tinggi'], true) || (is_numeric($value) && (float) $value >= 80)) {
+            return 'high';
+        }
+
+        if (in_array($value, ['nominal', 'medium', 'sedang'], true) || (is_numeric($value) && (float) $value >= 50)) {
+            return 'medium';
+        }
+
+        return 'low';
     }
 
     private function statusFor(mixed $confidence, string $language): string

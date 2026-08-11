@@ -31,6 +31,7 @@
             <div class="hidden items-stretch self-stretch text-xs font-semibold text-slate-600 lg:flex xl:text-sm">
                 <a href="{{ route('user.dashboard', ['lang' => $currentLanguage]) }}" class="flex items-center border-b-2 px-3 transition hover:border-red-500 hover:text-red-600 {{ request()->routeIs('user.dashboard') ? 'border-red-500 text-red-600' : 'border-transparent' }}">{{ $currentLanguage === 'en' ? 'Home' : 'Beranda' }}</a>
                 <a href="{{ route('user.map', ['lang' => $currentLanguage]) }}" class="flex items-center border-b-2 px-3 transition hover:border-red-500 hover:text-red-600 {{ request()->routeIs('user.map') ? 'border-red-500 text-red-600' : 'border-transparent' }}">{{ $currentLanguage === 'en' ? 'Map' : 'Peta' }}</a>
+                <a href="{{ route('user.statistics', ['lang' => $currentLanguage]) }}" class="flex items-center border-b-2 px-3 transition hover:border-red-500 hover:text-red-600 {{ request()->routeIs('user.statistics') ? 'border-red-500 text-red-600' : 'border-transparent' }}">{{ $currentLanguage === 'en' ? 'Statistics' : 'Statistik' }}</a>
                 <a href="{{ route('user.about', ['lang' => $currentLanguage]) }}" class="flex items-center border-b-2 px-3 transition hover:border-red-500 hover:text-red-600 {{ request()->routeIs('user.about') ? 'border-red-500 text-red-600' : 'border-transparent' }}">About</a>
                 <a href="{{ route('user.methodology', ['lang' => $currentLanguage]) }}" class="flex items-center border-b-2 px-3 transition hover:border-red-500 hover:text-red-600 {{ request()->routeIs('user.methodology') ? 'border-red-500 text-red-600' : 'border-transparent' }}">Methodology</a>
                 <a href="{{ route('user.team', ['lang' => $currentLanguage]) }}" class="flex items-center border-b-2 px-3 transition hover:border-red-500 hover:text-red-600 {{ request()->routeIs('user.team') ? 'border-red-500 text-red-600' : 'border-transparent' }}">Team</a>
@@ -57,6 +58,7 @@
                     <div class="absolute right-0 top-12 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white p-2 shadow-2xl">
                         <a href="{{ route('user.dashboard', ['lang' => $currentLanguage]) }}" class="block rounded-lg px-4 py-3 text-sm font-semibold hover:bg-slate-50">{{ $currentLanguage === 'en' ? 'Home' : 'Beranda' }}</a>
                         <a href="{{ route('user.map', ['lang' => $currentLanguage]) }}" class="block rounded-lg px-4 py-3 text-sm font-semibold hover:bg-slate-50">{{ $currentLanguage === 'en' ? 'Interactive Map' : 'Peta Interaktif' }}</a>
+                        <a href="{{ route('user.statistics', ['lang' => $currentLanguage]) }}" class="block rounded-lg px-4 py-3 text-sm font-semibold hover:bg-slate-50">{{ $currentLanguage === 'en' ? 'Statistics' : 'Statistik' }}</a>
                         <a href="{{ route('user.about', ['lang' => $currentLanguage]) }}" class="block rounded-lg px-4 py-3 text-sm font-semibold hover:bg-slate-50">About</a>
                         <a href="{{ route('user.methodology', ['lang' => $currentLanguage]) }}" class="block rounded-lg px-4 py-3 text-sm font-semibold hover:bg-slate-50">Methodology</a>
                         <a href="{{ route('user.team', ['lang' => $currentLanguage]) }}" class="block rounded-lg px-4 py-3 text-sm font-semibold hover:bg-slate-50">Team</a>
@@ -93,6 +95,7 @@
                 <a href="{{ route('user.methodology', ['lang' => $currentLanguage]) }}" class="hover:text-red-600">Methodology</a>
                 <a href="{{ route('user.team', ['lang' => $currentLanguage]) }}" class="hover:text-red-600">Team</a>
                 <a href="{{ route('user.map', ['lang' => $currentLanguage]) }}" class="hover:text-red-600">{{ $currentLanguage === 'en' ? 'Map' : 'Peta' }}</a>
+                <a href="{{ route('user.statistics', ['lang' => $currentLanguage]) }}" class="hover:text-red-600">{{ $currentLanguage === 'en' ? 'Statistics' : 'Statistik' }}</a>
                 <a href="{{ route('user.search', ['lang' => $currentLanguage]) }}" class="hover:text-red-600">{{ $currentLanguage === 'en' ? 'Search' : 'Pencarian' }}</a>
             </div>
         </div>

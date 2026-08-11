@@ -20,14 +20,25 @@
             <h1 class="mt-1 text-lg font-bold tracking-tight text-slate-950 sm:text-xl">{{ $language === 'en' ? 'EMBER location distribution' : 'Persebaran lokasi EMBER' }}</h1>
         </div>
 
-        <div class="absolute bottom-7 left-3 z-[500] flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2 text-xs font-semibold text-slate-600 sm:bottom-8 sm:left-5">
+        <div id="map-drilldown-control" class="absolute right-3 top-24 z-[500] w-[min(330px,calc(100%-1.5rem))] bg-white/95 p-4 shadow-xl ring-1 ring-slate-200 backdrop-blur sm:right-5 sm:top-5">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <p id="map-boundary-level" class="text-[10px] font-bold uppercase tracking-[0.16em] text-red-600">Provinsi</p>
+                    <p id="map-boundary-breadcrumb" class="mt-1 text-sm font-bold text-slate-950">Sumatera</p>
+                    <p id="map-boundary-instruction" class="mt-1 text-xs leading-5 text-slate-500">Klik provinsi untuk melihat kabupaten/kota.</p>
+                </div>
+                <button id="map-boundary-reset" type="button" class="hidden shrink-0 border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700">Reset</button>
+            </div>
+        </div>
+
+        <div class="absolute bottom-28 right-3 z-[500] flex max-w-[calc(100%-1.5rem)] flex-wrap justify-end gap-2 text-xs font-semibold text-slate-600 sm:bottom-8 sm:right-5">
             <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 ring-1 ring-slate-200"><span class="size-2.5 rounded-full bg-red-500"></span>{{ $language === 'en' ? 'High' : 'Tinggi' }}</span>
             <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 ring-1 ring-slate-200"><span class="size-2.5 rounded-full bg-amber-400"></span>{{ $language === 'en' ? 'Medium' : 'Sedang' }}</span>
             <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 ring-1 ring-slate-200"><span class="size-2.5 rounded-full bg-emerald-500"></span>{{ $language === 'en' ? 'Low' : 'Rendah' }}</span>
             <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2 ring-1 ring-slate-200"><span class="size-2.5 rounded-full bg-slate-500"></span>{{ $language === 'en' ? 'Unrated' : 'Belum dinilai' }}</span>
         </div>
 
-        <div id="map-year-filter" class="absolute bottom-7 right-3 z-[550] w-[min(420px,calc(100%-1.5rem))] sm:bottom-8 sm:right-5">
+        <div id="map-year-filter" class="absolute bottom-7 left-3 z-[550] w-[min(420px,calc(100%-1.5rem))] sm:bottom-8 sm:left-5">
             <div class="map-year-slider-control" style="--slider-progress: calc(100% - 1.125rem)">
                 <span class="sr-only">{{ $language === 'en' ? 'Filter locations by year' : 'Filter lokasi berdasarkan tahun' }}</span>
                 <div class="map-year-slider-track" aria-hidden="true">
@@ -113,7 +124,7 @@
                     </a>
                 </div>
             </aside>
-            <script id="ember-map-data" type="application/json">{!! json_encode(['language' => $language, 'locations' => $locations], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
+            <script id="ember-map-data" type="application/json">{!! json_encode(['language' => $language, 'locations' => $locations, 'boundaryLayers' => $boundaryLayers], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
         </div>
     </section>
 @endsection

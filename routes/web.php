@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Cms\AboutController;
 use App\Http\Controllers\Cms\AuthController;
+use App\Http\Controllers\Cms\GeoJsonController;
 use App\Http\Controllers\Cms\LocationController;
 use App\Http\Controllers\Cms\MethodologyController;
 use App\Http\Controllers\Cms\ReferenceController;
@@ -13,11 +14,13 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [DashboardController::class, 'index'])
     ->name('user.dashboard');
 Route::get('/map', [ContentController::class, 'map'])->name('user.map');
+Route::get('/statistics', [ContentController::class, 'statistics'])->name('user.statistics');
 Route::get('/locations/{id}', [ContentController::class, 'location'])->name('user.locations.show');
 Route::get('/search', [ContentController::class, 'search'])->name('user.search');
 Route::get('/about', [ContentController::class, 'about'])->name('user.about');
 Route::get('/team', [ContentController::class, 'team'])->name('user.team');
 Route::get('/methodology', [ContentController::class, 'methodology'])->name('user.methodology');
+Route::get('/map-layers/{id}', [GeoJsonController::class, 'show'])->name('map-layers.show');
 
 Route::prefix('cms')->name('cms.')->group(function () {
     Route::middleware('guest')->group(function () {
@@ -44,6 +47,11 @@ Route::prefix('cms')->name('cms.')->group(function () {
         Route::get('/reference', [ReferenceController::class, 'index'])->name('references.index');
         Route::post('/reference', [ReferenceController::class, 'store'])->name('references.store');
         Route::delete('/reference/{id}', [ReferenceController::class, 'destroy'])->name('references.destroy');
+
+        Route::get('/geojson', [GeoJsonController::class, 'index'])->name('geojson.index');
+        Route::post('/geojson', [GeoJsonController::class, 'store'])->name('geojson.store');
+        Route::patch('/geojson/{id}', [GeoJsonController::class, 'update'])->name('geojson.update');
+        Route::delete('/geojson/{id}', [GeoJsonController::class, 'destroy'])->name('geojson.destroy');
 
         Route::get('/titik-lokasi', [LocationController::class, 'index'])->name('locations.index');
         Route::get('/titik-lokasi/create', [LocationController::class, 'create'])->name('locations.create');

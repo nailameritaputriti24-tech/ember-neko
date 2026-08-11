@@ -40,6 +40,9 @@ class ExampleTest extends TestCase
             ->assertSee('locations\\/1?lang=id', false)
             ->assertSee('id="map-detail-panel"', false)
             ->assertSee('id="map-detail-close"', false)
+            ->assertSee('id="map-drilldown-control"', false)
+            ->assertSee('id="map-boundary-breadcrumb"', false)
+            ->assertSee('Klik provinsi untuk melihat kabupaten/kota.')
             ->assertSee('Buka detail lengkap')
             ->assertSee('h-[calc(100vh-6.5rem)]', false)
             ->assertDontSee('<footer', false);
@@ -102,5 +105,27 @@ class ExampleTest extends TestCase
             ->assertSee('data-year-values="2022,2024"', false)
             ->assertSee('>Semua<', false)
             ->assertSee('2 lokasi');
+    }
+
+    public function test_public_statistics_groups_location_statuses_by_year(): void
+    {
+        DB::table('titik_lokasi')->insert([
+            ['latitude' => -2.5, 'longitude' => 102.7, 'date' => '2024-02-01', 'confidence' => 'high'],
+            ['latitude' => -2.6, 'longitude' => 102.8, 'date' => '2024-03-01', 'confidence' => 'low'],
+            ['latitude' => -2.7, 'longitude' => 102.9, 'date' => '2025-04-01', 'confidence' => null],
+        ]);
+
+        $this->get(route('user.statistics', ['lang' => 'id']))
+            ->assertOk()
+            ->assertSee('Statistik Tahunan')
+            ->assertSee('2024')
+            ->assertSee('2025')
+            ->assertSee('Tinggi')
+            ->assertSee('Belum dinilai');
+
+        $this->get(route('user.statistics', ['lang' => 'en']))
+            ->assertOk()
+            ->assertSee('Annual Statistics')
+            ->assertSee('Unrated');
     }
 }
