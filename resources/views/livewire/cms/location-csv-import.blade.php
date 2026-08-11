@@ -6,7 +6,7 @@
                 Unduh template, isi data tanpa mengubah header, lalu unggah kembali. Latitude dan longitude wajib diisi; kolom lainnya boleh kosong.
             </p>
             <p class="mt-2 font-mono text-xs text-slate-500">provinsi, kabupaten_kota, kecamatan, desa, latitude, longitude, date, confidence</p>
-            <p class="mt-1 text-xs text-slate-500">Maksimal 5 MB atau 10.000 baris. Jika satu baris salah, seluruh impor dibatalkan.</p>
+            <p class="mt-1 text-xs text-slate-500">Format tanggal: HH/BB/TT, contoh 01/05/26. Baris tanpa latitude dan longitude akan dilewati. Maksimal 5 MB atau 10.000 baris.</p>
         </div>
 
         <form wire:submit="importCsv" class="flex flex-col gap-3 sm:flex-row sm:items-end">

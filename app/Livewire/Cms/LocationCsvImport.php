@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Cms;
 
+use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
@@ -108,11 +109,13 @@ class LocationCsvImport extends Component
         }
 
         try {
-            $header = fgetcsv($handle, escape: '');
+            $headerLine = fgets($handle);
 
-            if ($header === false) {
+            if ($headerLine === false) {
                 throw new RuntimeException('File CSV kosong.');
             }
+
+            [$header, $delimiter] = $this->parseHeader($headerLine);
 
             $header = array_map(
                 fn ($column) => strtolower(trim((string) $column)),
@@ -140,7 +143,7 @@ class LocationCsvImport extends Component
             $rows = [];
             $line = 1;
 
-            while (($values = fgetcsv($handle, escape: '')) !== false) {
+            while (($values = fgetcsv($handle, separator: $delimiter, escape: '')) !== false) {
                 $line++;
 
                 if (count(array_filter($values, fn ($value) => trim((string) $value) !== '')) === 0) {
@@ -158,6 +161,14 @@ class LocationCsvImport extends Component
                     $row[$column] = $value === '' ? null : $value;
                 }
 
+                $row['latitude'] = $this->normalizeCoordinate($row['latitude']);
+                $row['longitude'] = $this->normalizeCoordinate($row['longitude']);
+                $row['date'] = $this->normalizeDate($row['date']);
+
+                if ($row['latitude'] === null && $row['longitude'] === null) {
+                    continue;
+                }
+
                 $row['_line'] = $line;
                 $rows[] = $row;
 
@@ -170,5 +181,75 @@ class LocationCsvImport extends Component
         } finally {
             fclose($handle);
         }
+    }
+
+    private function parseHeader(string $headerLine): array
+    {
+        $expectedHeader = [
+            'provinsi',
+            'kabupaten_kota',
+            'kecamatan',
+            'desa',
+            'latitude',
+            'longitude',
+            'date',
+            'confidence',
+        ];
+
+        foreach ([',', ';', "\t"] as $delimiter) {
+            $header = str_getcsv($headerLine, $delimiter, escape: '');
+            $header = array_map(
+                fn ($column) => strtolower(trim((string) $column)),
+                $header
+            );
+            $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', $header[0]) ?? $header[0];
+
+            if ($header === $expectedHeader) {
+                return [$header, $delimiter];
+            }
+        }
+
+        throw new RuntimeException(
+            'Header CSV tidak sesuai. Gunakan template CSV yang tersedia tanpa mengubah nama atau urutan kolom.'
+        );
+    }
+
+    private function normalizeCoordinate(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim(str_replace(["\u{2212}", "\u{2013}", "\u{2014}", "\u{00A0}"], ['-', '-', '-', ''], $value));
+
+        if (preg_match('/^=["\'](.+)["\']$/', $value, $matches) === 1) {
+            $value = trim($matches[1]);
+        } elseif (preg_match('/^["\'](.+)["\']$/', $value, $matches) === 1) {
+            $value = trim($matches[1]);
+        }
+
+        if (preg_match('/^[+-]?\d+,\d+$/', $value) === 1) {
+            $value = str_replace(',', '.', $value);
+        }
+
+        return $value;
+    }
+
+    private function normalizeDate(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        foreach (['!d/m/y', '!d/m/Y'] as $format) {
+            $date = DateTimeImmutable::createFromFormat($format, $value);
+            $errors = DateTimeImmutable::getLastErrors();
+
+            if ($date !== false && ($errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0))) {
+                return $date->format('Y-m-d');
+            }
+        }
+
+        return $value;
     }
 }

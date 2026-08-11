@@ -262,6 +262,105 @@ class CmsAccessTest extends TestCase
         $this->assertDatabaseCount('titik_lokasi', 0);
     }
 
+    public function test_location_import_accepts_excel_semicolon_csv_with_decimal_commas(): void
+    {
+        $admin = User::factory()->create();
+        $csv = implode("\n", [
+            'provinsi;kabupaten_kota;kecamatan;desa;latitude;longitude;date;confidence',
+            'Sumatera Selatan;;;;-2,56422;102,77008;;',
+            'Aceh;;;;4,90892;97,47369;;',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(LocationCsvImport::class)
+            ->set('csvFile', UploadedFile::fake()->createWithContent('titik-lokasi.csv', $csv))
+            ->call('importCsv')
+            ->assertRedirect(route('cms.locations.index'))
+            ->assertSessionHas('success', '2 titik lokasi berhasil diimpor dari CSV.');
+
+        $this->assertDatabaseHas('titik_lokasi', [
+            'latitude' => -2.56422,
+            'longitude' => 102.77008,
+        ]);
+    }
+
+    public function test_location_import_accepts_tab_separated_csv_coordinates(): void
+    {
+        $admin = User::factory()->create();
+        $csv = implode("\n", [
+            "provinsi\tkabupaten_kota\tkecamatan\tdesa\tlatitude\tlongitude\tdate\tconfidence",
+            "Aceh\t\t\t\t4.80683\t97.66273\t\t",
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(LocationCsvImport::class)
+            ->set('csvFile', UploadedFile::fake()->createWithContent('titik-lokasi.csv', $csv))
+            ->call('importCsv')
+            ->assertRedirect(route('cms.locations.index'));
+
+        $this->assertDatabaseHas('titik_lokasi', [
+            'latitude' => 4.80683,
+            'longitude' => 97.66273,
+        ]);
+    }
+
+    public function test_location_import_accepts_day_month_two_digit_year_dates(): void
+    {
+        $admin = User::factory()->create();
+        $csv = implode("\n", [
+            'provinsi,kabupaten_kota,kecamatan,desa,latitude,longitude,date,confidence',
+            'Aceh,Aceh Utara,Muara Batu,Contoh Desa,4.90892,97.47369,01/05/26,high',
+            'Aceh,Aceh Utara,Muara Batu,Contoh Desa,4.80683,97.66273,08/05/26,high',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(LocationCsvImport::class)
+            ->set('csvFile', UploadedFile::fake()->createWithContent('titik-lokasi.csv', $csv))
+            ->call('importCsv')
+            ->assertRedirect(route('cms.locations.index'));
+
+        $this->assertDatabaseHas('titik_lokasi', ['date' => '2026-05-01']);
+        $this->assertDatabaseHas('titik_lokasi', ['date' => '2026-05-08']);
+    }
+
+    public function test_location_import_skips_rows_without_both_coordinates(): void
+    {
+        $admin = User::factory()->create();
+        $csv = implode("\n", [
+            'provinsi,kabupaten_kota,kecamatan,desa,latitude,longitude,date,confidence',
+            'Aceh,Aceh Utara,Muara Batu,Data Valid,4.90892,97.47369,01/05/26,high',
+            'Aceh,Aceh Utara,Muara Batu,Baris Tanpa Koordinat,,,02/05/26,high',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(LocationCsvImport::class)
+            ->set('csvFile', UploadedFile::fake()->createWithContent('titik-lokasi.csv', $csv))
+            ->call('importCsv')
+            ->assertRedirect(route('cms.locations.index'))
+            ->assertSessionHas('success', '1 titik lokasi berhasil diimpor dari CSV.');
+
+        $this->assertDatabaseCount('titik_lokasi', 1);
+        $this->assertDatabaseHas('titik_lokasi', ['desa' => 'Data Valid']);
+    }
+
+    public function test_location_import_rejects_row_with_only_one_coordinate(): void
+    {
+        $admin = User::factory()->create();
+        $csv = implode("\n", [
+            'provinsi,kabupaten_kota,kecamatan,desa,latitude,longitude,date,confidence',
+            'Aceh,Aceh Utara,Muara Batu,Koordinat Tidak Lengkap,4.90892,,01/05/26,high',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(LocationCsvImport::class)
+            ->set('csvFile', UploadedFile::fake()->createWithContent('titik-lokasi.csv', $csv))
+            ->call('importCsv')
+            ->assertHasErrors('csvFile')
+            ->assertSet('importErrors', fn (array $errors) => count($errors) === 1);
+
+        $this->assertDatabaseCount('titik_lokasi', 0);
+    }
+
     public function test_authenticated_admin_can_upload_and_delete_reference_photo(): void
     {
         Storage::fake('public');
