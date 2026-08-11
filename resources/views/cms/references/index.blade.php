@@ -59,12 +59,13 @@
 
                                 <div class="mt-3 grid grid-cols-2 gap-2">
                                     <button type="button" data-copy-url="{{ $photoUrl }}" class="border border-slate-300 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">Salin URL</button>
-                                    <form method="POST" action="{{ route('cms.references.destroy', $photo->id) }}" onsubmit="return confirm('Hapus foto referensi ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="w-full border border-red-200 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50">Hapus</button>
-                                    </form>
+                                    <button type="button" onclick="useForTeam('{{ $photoUrl }}')" class="border border-red-300 px-3 py-2 text-xs font-bold text-red-700 transition hover:bg-red-50">Pilih</button>
                                 </div>
+                                <form method="POST" action="{{ route('cms.references.destroy', $photo->id) }}" onsubmit="return confirm('Hapus foto referensi ini?')" class="mt-2">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="w-full border border-red-200 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-50">Hapus</button>
+                                </form>
                             </div>
                         </article>
                     @empty
@@ -74,4 +75,15 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function useForTeam(url) {
+            if (window.opener && typeof window.opener.useReferencePhoto === 'function') {
+                window.opener.useReferencePhoto(url);
+                window.close();
+            } else {
+                alert('Buka halaman ini dari halaman CMS Team untuk menggunakan fitur pilih.');
+            }
+        }
+    </script>
 @endsection

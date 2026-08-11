@@ -45,6 +45,7 @@ Route::prefix('cms')->name('cms.')->group(function () {
         Route::delete('/team/{id}', [TeamController::class, 'destroy'])->name('team.destroy');
 
         Route::get('/reference', [ReferenceController::class, 'index'])->name('references.index');
+        Route::get('/references/picker', [ReferenceController::class, 'picker'])->name('references.picker');
         Route::post('/reference', [ReferenceController::class, 'store'])->name('references.store');
         Route::delete('/reference/{id}', [ReferenceController::class, 'destroy'])->name('references.destroy');
 
