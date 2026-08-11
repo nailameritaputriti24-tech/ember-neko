@@ -11,14 +11,21 @@
         </div>
 
         <div class="grid gap-6 xl:grid-cols-[420px_1fr]">
-            <form method="POST" action="{{ route('cms.team.store') }}" enctype="multipart/form-data" class="h-fit bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <form method="POST" action="{{ route('cms.team.store') }}" class="h-fit bg-white p-6 shadow-sm ring-1 ring-slate-200">
                 @csrf
                 <h2 class="text-lg font-bold text-slate-900">Tambah anggota</h2>
                 <div class="mt-5 space-y-5">
                     <div>
                         <label for="photo" class="block text-sm font-semibold text-slate-700">Photo</label>
-                        <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" required class="mt-2 block w-full border border-slate-300 bg-white p-3 text-sm text-slate-600 file:mr-4 file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-xs file:font-bold file:text-white">
+                        <div class="mt-2 flex gap-2">
+                            <input id="photo" name="photo" type="text" value="{{ old('photo') }}" placeholder="contoh: references/abc.jpg" required class="w-full border border-slate-300 px-4 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-4 focus:ring-red-100">
+                            <button type="button" onclick="window.open('{{ route('cms.references.picker') }}', '_blank', 'width=1100,height=700')" class="shrink-0 border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50">Pilih File</button>
+                        </div>
+                        <p class="mt-2 text-xs leading-5 text-slate-500">Klik <strong>Pilih File</strong> untuk membuka pustaka referensi di tab baru, lalu salin path atau URL foto.</p>
                         @error('photo')<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
+                        <div id="photo-preview" class="mt-3 hidden">
+                            <img src="" alt="Preview" class="size-24 object-cover ring-1 ring-slate-200">
+                        </div>
                     </div>
                     <div>
                         <label for="nama" class="block text-sm font-semibold text-slate-700">Nama</label>
@@ -64,4 +71,27 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function extractStoragePath(url) {
+            const match = url.match(/\/storage\/(.+)$/);
+            return match ? match[1] : url;
+        }
+
+        function useReferencePhoto(url) {
+            const input = document.getElementById('photo');
+            const previewContainer = document.getElementById('photo-preview');
+            const previewImg = previewContainer ? previewContainer.querySelector('img') : null;
+
+            if (!input) return;
+
+            const path = extractStoragePath(url);
+            input.value = path;
+
+            if (previewContainer && previewImg) {
+                previewImg.src = url;
+                previewContainer.classList.remove('hidden');
+            }
+        }
+    </script>
 @endsection

@@ -11,6 +11,13 @@ use Illuminate\View\View;
 
 class ReferenceController extends Controller
 {
+    public function picker(): View
+    {
+        return view('cms.references.picker', [
+            'photos' => DB::table('photo_references')->latest()->get(),
+        ]);
+    }
+
     public function index(): View
     {
         return view('cms.references.index', [
