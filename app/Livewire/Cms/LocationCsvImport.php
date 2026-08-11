@@ -161,8 +161,9 @@ class LocationCsvImport extends Component
                     $row[$column] = $value === '' ? null : $value;
                 }
 
-                $row['latitude'] = $this->normalizeCoordinate($row['latitude']);
-                $row['longitude'] = $this->normalizeCoordinate($row['longitude']);
+                $isIndonesianLocation = $row['provinsi'] !== null;
+                $row['latitude'] = $this->normalizeCoordinate($row['latitude'], false, $isIndonesianLocation);
+                $row['longitude'] = $this->normalizeCoordinate($row['longitude'], true, $isIndonesianLocation);
                 $row['date'] = $this->normalizeDate($row['date']);
 
                 if ($row['latitude'] === null && $row['longitude'] === null) {
@@ -214,7 +215,7 @@ class LocationCsvImport extends Component
         );
     }
 
-    private function normalizeCoordinate(?string $value): ?string
+    private function normalizeCoordinate(?string $value, bool $isLongitude, bool $isIndonesianLocation): ?string
     {
         if ($value === null) {
             return null;
@@ -232,6 +233,29 @@ class LocationCsvImport extends Component
             $value = str_replace(',', '.', $value);
         }
 
+        $hasRepeatedThousandsSeparators = substr_count($value, '.') > 1
+            && preg_match('/^[+-]?[\d.]+$/', $value) === 1;
+
+        if ($hasRepeatedThousandsSeparators) {
+            $value = str_replace('.', '', $value);
+        }
+
+        if ($isIndonesianLocation && is_numeric($value)) {
+            $coordinate = (float) $value;
+
+            if ($isLongitude && ($hasRepeatedThousandsSeparators || abs($coordinate) >= 900)) {
+                while (abs($coordinate) > 142) {
+                    $coordinate /= 10;
+                }
+            } elseif (! $isLongitude && ($hasRepeatedThousandsSeparators || (abs($coordinate) <= 90 && ($coordinate > 6.5 || $coordinate < -11)) || ($coordinate > 90 && $coordinate < 650))) {
+                while ($coordinate > 6.5 || $coordinate < -11) {
+                    $coordinate /= 10;
+                }
+            }
+
+            $value = rtrim(rtrim(number_format($coordinate, 8, '.', ''), '0'), '.');
+        }
+
         return $value;
     }
 
@@ -241,7 +265,21 @@ class LocationCsvImport extends Component
             return null;
         }
 
-        foreach (['!d/m/y', '!d/m/Y'] as $format) {
+        $format = '!d/m/y';
+
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $value, $parts) === 1) {
+            $firstPart = (int) $parts[1];
+            $secondPart = (int) $parts[2];
+            $hasPaddedDayAndMonth = strlen($parts[1]) === 2 && strlen($parts[2]) === 2;
+
+            $format = $firstPart > 12 || $hasPaddedDayAndMonth ? '!d/m/Y' : '!m/d/Y';
+
+            if ($secondPart > 12) {
+                $format = '!m/d/Y';
+            }
+        }
+
+        foreach ([$format] as $format) {
             $date = DateTimeImmutable::createFromFormat($format, $value);
             $errors = DateTimeImmutable::getLastErrors();
 

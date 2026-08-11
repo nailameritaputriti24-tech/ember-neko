@@ -361,6 +361,40 @@ class CmsAccessTest extends TestCase
         $this->assertDatabaseCount('titik_lokasi', 0);
     }
 
+    public function test_location_import_repairs_spreadsheet_formatted_indonesian_coordinates_and_dates(): void
+    {
+        $admin = User::factory()->create();
+        $csv = implode("\n", [
+            'provinsi,kabupaten_kota,kecamatan,desa,latitude,longitude,date,confidence',
+            'Sumatera Utara,Kota Gunungsitoli,Gunungsitoli,Ilir,1.2832,976.189,1/1/2021,0',
+            'Sumatera Barat,Pesisir Selatan,Ranah Ampek Hulu Tapan,Kubu Tapan,-22.008,1.010.151,1/5/2021,39',
+            'Sumatera Barat,Pasaman,Lubuk Sikaping,Pauah,143,1.001.839,1/5/2021,12',
+            'Sumatera Utara,Deli Serdang,Pantai Labu,Denai Sarang Burung,3.6635,989.176,1/12/2021,41',
+            'Sumatera Barat,Pesisir Selatan,Ranah Ampek Hulu Tapan,Kubu Tapan,-22.109,1.010.689,1/16/2021,54',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(LocationCsvImport::class)
+            ->set('csvFile', UploadedFile::fake()->createWithContent('titik-lokasi.csv', $csv))
+            ->call('importCsv')
+            ->assertRedirect(route('cms.locations.index'))
+            ->assertSessionHas('success', '5 titik lokasi berhasil diimpor dari CSV.');
+
+        $this->assertDatabaseHas('titik_lokasi', [
+            'latitude' => -2.2008,
+            'longitude' => 101.0151,
+            'date' => '2021-01-05',
+        ]);
+        $this->assertDatabaseHas('titik_lokasi', [
+            'latitude' => 1.43,
+            'longitude' => 100.1839,
+        ]);
+        $this->assertDatabaseHas('titik_lokasi', [
+            'longitude' => 101.0689,
+            'date' => '2021-01-16',
+        ]);
+    }
+
     public function test_authenticated_admin_can_upload_and_delete_reference_photo(): void
     {
         Storage::fake('public');
