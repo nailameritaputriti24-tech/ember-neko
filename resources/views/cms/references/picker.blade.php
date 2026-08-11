@@ -35,9 +35,10 @@
         function useForTeam(url) {
             if (window.opener && typeof window.opener.useReferencePhoto === 'function') {
                 window.opener.useReferencePhoto(url);
+                window.close();
+            } else {
+                alert('Buka halaman ini dari halaman CMS Team untuk menggunakan fitur pilih.');
             }
-
-            window.open(url, '_blank');
         }
     </script>
 @endsection
