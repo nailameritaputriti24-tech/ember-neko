@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Cms\LocationCsvImport;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class CmsAccessTest extends TestCase
@@ -68,17 +70,34 @@ class CmsAccessTest extends TestCase
 
         $this->actingAs($admin)
             ->post(route('cms.team.store'), [
-                'photo' => UploadedFile::fake()->image('team.jpg', 600, 600),
+                'photo' => 'references/team.jpg',
                 'nama' => 'Tim Monitoring',
                 'npm' => '2312345678',
+                'github_url' => 'https://github.com/ember-team/monitoring',
+                'description_id' => 'Mengelola data dan pengembangan sistem EMBER.',
+                'description_en' => 'Manages EMBER data and system development.',
             ])
             ->assertSessionHas('success');
 
         $this->assertDatabaseHas('team_members', [
             'nama' => 'Tim Monitoring',
             'npm' => '2312345678',
+            'github_url' => 'https://github.com/ember-team/monitoring',
+            'bio_id' => 'Mengelola data dan pengembangan sistem EMBER.',
+            'bio_en' => 'Manages EMBER data and system development.',
             'is_active' => true,
         ]);
+
+        $this->get(route('user.team', ['lang' => 'id']))
+            ->assertOk()
+            ->assertSee('Mengelola data dan pengembangan sistem EMBER.')
+            ->assertSee('Repository GitHub')
+            ->assertSee('https://github.com/ember-team/monitoring');
+
+        $this->get(route('user.team', ['lang' => 'en']))
+            ->assertOk()
+            ->assertSee('Manages EMBER data and system development.')
+            ->assertSee('GitHub Repository');
     }
 
     public function test_admin_can_manage_bilingual_methodology_and_public_can_switch_language(): void
@@ -99,6 +118,17 @@ class CmsAccessTest extends TestCase
         $this->get(route('user.methodology', ['lang' => 'en']))
             ->assertOk()
             ->assertSee('Explanation in English.');
+    }
+
+    public function test_public_navigation_labels_follow_selected_language(): void
+    {
+        $this->get(route('user.dashboard', ['lang' => 'id']))
+            ->assertOk()
+            ->assertSeeInOrder(['Beranda', 'Peta', 'Statistik', 'Tentang', 'Metodologi', 'Tim']);
+
+        $this->get(route('user.dashboard', ['lang' => 'en']))
+            ->assertOk()
+            ->assertSeeInOrder(['Home', 'Map', 'Statistics', 'About', 'Methodology', 'Team']);
     }
 
     public function test_authenticated_admin_can_edit_location_details(): void
@@ -169,6 +199,67 @@ class CmsAccessTest extends TestCase
             'desa' => 'Contoh Desa Baru',
             'confidence' => 'high',
         ]);
+    }
+
+    public function test_authenticated_admin_can_download_location_csv_template(): void
+    {
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin)
+            ->get(route('cms.locations.index'))
+            ->assertOk()
+            ->assertSee('Import titik lokasi dari CSV')
+            ->assertSee(route('cms.locations.template'));
+
+        $this->actingAs($admin)
+            ->get(route('cms.locations.template'))
+            ->assertOk()
+            ->assertDownload('template-import-titik-lokasi.csv');
+    }
+
+    public function test_authenticated_admin_can_import_locations_from_csv(): void
+    {
+        $admin = User::factory()->create();
+        $csv = implode("\n", [
+            'provinsi,kabupaten_kota,kecamatan,desa,latitude,longitude,date,confidence',
+            'Sumatera Selatan,Palembang,Ilir Timur I,20 Ilir D III,-2.97607300,104.77543100,2026-08-11,high',
+            'Kalimantan Tengah,Kotawaringin Timur,Mentaya Hilir Selatan,Sebamban,-2.81430000,112.95370000,2026-08-11,85',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(LocationCsvImport::class)
+            ->set('csvFile', UploadedFile::fake()->createWithContent('titik-lokasi.csv', $csv))
+            ->call('importCsv')
+            ->assertRedirect(route('cms.locations.index'))
+            ->assertSessionHas('success', '2 titik lokasi berhasil diimpor dari CSV.');
+
+        $this->assertDatabaseHas('titik_lokasi', [
+            'desa' => '20 Ilir D III',
+            'confidence' => 'high',
+        ]);
+        $this->assertDatabaseHas('titik_lokasi', [
+            'desa' => 'Sebamban',
+            'confidence' => '85',
+        ]);
+    }
+
+    public function test_invalid_csv_row_cancels_the_whole_location_import(): void
+    {
+        $admin = User::factory()->create();
+        $csv = implode("\n", [
+            'provinsi,kabupaten_kota,kecamatan,desa,latitude,longitude,date,confidence',
+            'Aceh,Aceh Utara,Muara Batu,Contoh Desa,4.90892,97.47369,2026-08-11,high',
+            'Aceh,Aceh Utara,Muara Batu,Koordinat Salah,-95,200,11-08-2026,high',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(LocationCsvImport::class)
+            ->set('csvFile', UploadedFile::fake()->createWithContent('titik-lokasi.csv', $csv))
+            ->call('importCsv')
+            ->assertHasErrors('csvFile')
+            ->assertSet('importErrors', fn (array $errors) => count($errors) === 3);
+
+        $this->assertDatabaseCount('titik_lokasi', 0);
     }
 
     public function test_authenticated_admin_can_upload_and_delete_reference_photo(): void

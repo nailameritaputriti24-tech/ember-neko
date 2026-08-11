@@ -12,6 +12,7 @@
                 'about_desc' => 'Kenali tujuan, visi, dan misi di balik sistem pemantauan EMBER.',
                 'method_desc' => 'Pelajari sumber data, proses pengolahan, dan klasifikasi confidence.',
                 'team_desc' => 'Kenali tim yang mengelola data dan informasi pada portal EMBER.', 'read_more' => 'Selengkapnya',
+                'about_title' => 'Tentang', 'method_title' => 'Metodologi', 'team_title' => 'Tim',
             ],
             'en' => [
                 'headline_before' => 'Monitor fire-prone locations on', 'headline_highlight' => 'one map.',
@@ -24,6 +25,7 @@
                 'about_desc' => 'Discover the purpose, vision, and mission behind the EMBER monitoring system.',
                 'method_desc' => 'Learn about data sources, processing methods, and confidence classification.',
                 'team_desc' => 'Meet the team managing data and information across the EMBER portal.', 'read_more' => 'Learn more',
+                'about_title' => 'About', 'method_title' => 'Methodology', 'team_title' => 'Team',
             ],
         ][$language];
     @endphp
@@ -86,9 +88,9 @@
             </div>
             <div class="grid gap-px overflow-hidden rounded-2xl bg-slate-200 ring-1 ring-slate-200 md:grid-cols-3">
                 @foreach ([
-                    ['01', 'About', $t['about_desc'], route('user.about', ['lang' => $language])],
-                    ['02', 'Methodology', $t['method_desc'], route('user.methodology', ['lang' => $language])],
-                    ['03', 'Team', $t['team_desc'], route('user.team', ['lang' => $language])],
+                    ['01', $t['about_title'], $t['about_desc'], route('user.about', ['lang' => $language])],
+                    ['02', $t['method_title'], $t['method_desc'], route('user.methodology', ['lang' => $language])],
+                    ['03', $t['team_title'], $t['team_desc'], route('user.team', ['lang' => $language])],
                 ] as [$number, $title, $description, $url])
                     <a href="{{ $url }}" class="group bg-white p-7 transition hover:bg-slate-50">
                         <p class="text-sm font-bold text-red-600">{{ $number }}</p>

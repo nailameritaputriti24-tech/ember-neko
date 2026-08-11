@@ -37,7 +37,9 @@
 
                         <div class="mt-5">
                             <label for="{{ $contentField }}" class="block text-sm font-semibold text-slate-700">Content {{ $code }}</label>
-                            <textarea id="{{ $contentField }}" name="{{ $contentField }}" rows="12" class="mt-2 w-full border border-slate-300 px-4 py-3 text-sm leading-7 focus:border-red-500 focus:outline-none focus:ring-4 focus:ring-red-100">{{ old($contentField, $about?->{$contentField}) }}</textarea>
+                            <div class="mt-2">
+                                <x-tinymce :id="$contentField" :name="$contentField" :value="old($contentField, $about?->{$contentField})" />
+                            </div>
                             @error($contentField)<p class="mt-2 text-sm text-red-600">{{ $message }}</p>@enderror
                         </div>
                     </section>

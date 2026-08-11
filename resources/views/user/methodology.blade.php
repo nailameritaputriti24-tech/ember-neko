@@ -1,11 +1,10 @@
 @extends('layouts.user')
 
-@section('title', 'Methodology - EMBER')
+@section('title', ($language === 'en' ? 'Methodology' : 'Metodologi') . ' - EMBER')
 
 @section('content')
     @php
         $content = $methodology?->{'content_'.$language};
-        $image = $methodology?->{'image_'.$language};
     @endphp
 
     <section class="bg-slate-950 px-4 py-16 text-white sm:px-6 lg:px-8">
@@ -15,16 +14,9 @@
         </div>
     </section>
 
-    <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+    <section class="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
         @if ($methodology)
-            <div class="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-                @if ($image)
-                    <img src="{{ asset('storage/'.$image) }}" alt="Methodology EMBER" class="aspect-[4/3] w-full bg-slate-100 object-cover">
-                @else
-                    <div class="flex aspect-[4/3] items-center justify-center bg-slate-100 text-sm font-semibold text-slate-400">{{ $language === 'en' ? 'Image is not available yet' : 'Gambar belum tersedia' }}</div>
-                @endif
-                <div class="whitespace-pre-line text-lg leading-8 text-slate-700">{{ $content ?: ($language === 'en' ? 'Methodology content is not available yet.' : 'Konten Methodology belum tersedia.') }}</div>
-            </div>
+            <div class="rich-content text-lg leading-8 text-slate-700">{!! $content ?: e($language === 'en' ? 'Methodology content is not available yet.' : 'Konten Methodology belum tersedia.') !!}</div>
         @else
             <p class="border border-slate-200 bg-white p-8 text-slate-500">{{ $language === 'en' ? 'Methodology content is not available yet.' : 'Konten Methodology belum tersedia.' }}</p>
         @endif

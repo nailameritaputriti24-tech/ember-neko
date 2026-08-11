@@ -8,6 +8,7 @@ import {
     leafletLayer,
 } from 'protomaps-leaflet';
 
+
 const EmberMap = {
     map: null,
     markerLayer: null,
@@ -720,3 +721,29 @@ const initializeLocationDetailMap = () => {
 
 document.addEventListener('DOMContentLoaded', initializeLocationDetailMap);
 document.addEventListener('livewire:navigated', initializeLocationDetailMap);
+
+const initializeRichContentSliders = () => {
+    document.querySelectorAll('.rich-content .tmce-slider').forEach((slider) => {
+        if (slider.dataset.initialized === 'true') return;
+
+        const slides = Array.from(slider.querySelectorAll('.tmce-slides > figure'));
+
+        if (slides.length === 0) return;
+
+        slider.dataset.initialized = 'true';
+        let currentIndex = Math.max(0, slides.findIndex((slide) => slide.classList.contains('active')));
+
+        const showSlide = (index) => {
+            currentIndex = (index + slides.length) % slides.length;
+            slides.forEach((slide, slideIndex) => slide.classList.toggle('active', slideIndex === currentIndex));
+            slider.dataset.index = String(currentIndex);
+        };
+
+        slider.querySelector('.prev')?.addEventListener('click', () => showSlide(currentIndex - 1));
+        slider.querySelector('.next')?.addEventListener('click', () => showSlide(currentIndex + 1));
+        showSlide(currentIndex);
+    });
+};
+
+document.addEventListener('DOMContentLoaded', initializeRichContentSliders);
+document.addEventListener('livewire:navigated', initializeRichContentSliders);

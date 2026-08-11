@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class MethodologyController extends Controller
@@ -21,8 +20,6 @@ class MethodologyController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'image_id' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
-            'image_en' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'content_id' => ['nullable', 'string'],
             'content_en' => ['nullable', 'string'],
         ]);
@@ -33,16 +30,6 @@ class MethodologyController extends Controller
             'content_en' => $validated['content_en'] ?? null,
             'updated_at' => now(),
         ];
-
-        foreach (['image_id', 'image_en'] as $field) {
-            if ($request->hasFile($field)) {
-                if ($methodology?->{$field}) {
-                    Storage::disk('public')->delete($methodology->{$field});
-                }
-
-                $values[$field] = $request->file($field)->store('methodology', 'public');
-            }
-        }
 
         if ($methodology) {
             DB::table('methodology_pages')->where('id', $methodology->id)->update($values);

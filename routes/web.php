@@ -56,6 +56,7 @@ Route::prefix('cms')->name('cms.')->group(function () {
 
         Route::get('/titik-lokasi', [LocationController::class, 'index'])->name('locations.index');
         Route::get('/titik-lokasi/create', [LocationController::class, 'create'])->name('locations.create');
+        Route::get('/titik-lokasi/template-csv', [LocationController::class, 'downloadCsvTemplate'])->name('locations.template');
         Route::post('/titik-lokasi', [LocationController::class, 'store'])->name('locations.store');
         Route::get('/titik-lokasi/{id}', [LocationController::class, 'show'])->name('locations.show');
         Route::get('/titik-lokasi/{id}/edit', [LocationController::class, 'edit'])->name('locations.edit');

@@ -12,11 +12,16 @@
             </div>
             <div class="flex flex-wrap items-center gap-3">
                 <span class="w-fit bg-slate-900 px-4 py-2 text-sm font-bold text-white">{{ $locations->total() }} lokasi</span>
+                <a href="{{ route('cms.locations.template') }}" class="inline-flex items-center gap-2 border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
+                    Unduh Template CSV
+                </a>
                 <a href="{{ route('cms.locations.create') }}" class="inline-flex items-center gap-2 border border-red-600 bg-red-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-500">
                     <span aria-hidden="true">+</span> Tambah Titik Lokasi
                 </a>
             </div>
         </div>
+
+        <livewire:cms.location-csv-import />
 
         <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
             <div class="overflow-x-auto">

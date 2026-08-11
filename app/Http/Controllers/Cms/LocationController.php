@@ -7,6 +7,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class LocationController extends Controller
 {
@@ -37,6 +38,15 @@ class LocationController extends Controller
     public function create(): View
     {
         return view('cms.locations.create');
+    }
+
+    public function downloadCsvTemplate(): BinaryFileResponse
+    {
+        return response()->download(
+            resource_path('csv/template-import-titik-lokasi.csv'),
+            'template-import-titik-lokasi.csv',
+            ['Content-Type' => 'text/csv; charset=UTF-8']
+        );
     }
 
     public function store(Request $request): RedirectResponse
@@ -78,16 +88,21 @@ class LocationController extends Controller
 
     private function validatedData(Request $request): array
     {
-        return $request->validate([
+        return $request->validate($this->locationRules());
+    }
+
+    private function locationRules(): array
+    {
+        return [
             'provinsi' => ['nullable', 'string', 'max:255'],
             'kabupaten_kota' => ['nullable', 'string', 'max:255'],
             'kecamatan' => ['nullable', 'string', 'max:255'],
             'desa' => ['nullable', 'string', 'max:255'],
             'latitude' => ['required', 'numeric', 'between:-90,90'],
             'longitude' => ['required', 'numeric', 'between:-180,180'],
-            'date' => ['nullable', 'date'],
+            'date' => ['nullable', 'date_format:Y-m-d'],
             'confidence' => ['nullable', 'string', 'max:50'],
-        ]);
+        ];
     }
 
     private function statusFor(mixed $confidence): array

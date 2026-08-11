@@ -23,6 +23,14 @@ class TeamController extends Controller
             'photo' => ['required', 'string', 'max:255'],
             'nama' => ['required', 'string', 'max:255'],
             'npm' => ['required', 'string', 'max:100'],
+            'github_url' => [
+                'required',
+                'url:http,https',
+                'max:2048',
+                'starts_with:https://github.com/,http://github.com/,https://www.github.com/,http://www.github.com/',
+            ],
+            'description_id' => ['nullable', 'string', 'max:5000'],
+            'description_en' => ['nullable', 'string', 'max:5000'],
         ]);
 
         DB::table('team_members')->insert([
@@ -35,6 +43,10 @@ class TeamController extends Controller
             'name_en' => $validated['nama'],
             'position_id' => $validated['npm'],
             'position_en' => $validated['npm'],
+            'bio' => $validated['description_id'] ?? null,
+            'bio_id' => $validated['description_id'] ?? null,
+            'bio_en' => $validated['description_en'] ?? null,
+            'github_url' => $validated['github_url'],
             'sort_order' => (int) DB::table('team_members')->max('sort_order') + 1,
             'is_active' => true,
             'created_at' => now(),

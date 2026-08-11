@@ -15,15 +15,15 @@
         </div>
     </section>
 
-    <section class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+    <section class="mx-auto max-w-5xl px-4 py-14 sm:px-6 lg:px-8">
         @if ($about)
-            <div class="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+            <div class="space-y-8">
                 @if ($image)
-                    <img src="{{ asset('storage/'.$image) }}" alt="{{ $language === 'en' ? 'About EMBER' : 'Tentang EMBER' }}" class="aspect-[4/3] w-full bg-slate-100 object-cover">
+                    <img src="{{ asset('storage/'.$image) }}" alt="{{ $language === 'en' ? 'About EMBER' : 'Tentang EMBER' }}" class="mx-auto aspect-video w-full max-w-3xl bg-slate-100 object-cover">
                 @else
-                    <div class="flex aspect-[4/3] items-center justify-center bg-slate-100 text-sm font-semibold text-slate-400">{{ $language === 'en' ? 'Image is not available yet' : 'Gambar belum tersedia' }}</div>
+                    <div class="mx-auto flex aspect-video w-full max-w-3xl items-center justify-center bg-slate-100 text-sm font-semibold text-slate-400">{{ $language === 'en' ? 'Image is not available yet' : 'Gambar belum tersedia' }}</div>
                 @endif
-                <div class="whitespace-pre-line text-lg leading-8 text-slate-700">{{ $content ?: ($language === 'en' ? 'About content is not available yet.' : 'Konten About belum tersedia.') }}</div>
+                <div class="rich-content max-w-4xl text-lg leading-8 text-slate-700">{!! $content ?: e($language === 'en' ? 'About content is not available yet.' : 'Konten About belum tersedia.') !!}</div>
             </div>
         @else
             <p class="border border-slate-200 bg-white p-8 text-slate-500">{{ $language === 'en' ? 'About content is not available yet.' : 'Konten About belum tersedia.' }}</p>
